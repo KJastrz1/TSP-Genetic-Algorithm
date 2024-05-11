@@ -10,8 +10,8 @@ class Individual:
         self.calculate_cost()
 
     @classmethod
-    def random(cls, num_cities, graph, start_node):
-        route = list(range(num_cities))
+    def random(cls, num_nodes, graph, start_node):
+        route = list(range(num_nodes))
         route.remove(start_node)
         random.shuffle(route)
         return cls(route, graph,start_node)
@@ -33,18 +33,18 @@ class Individual:
         child_route = [None] * len(self.route)   
         child_route[start:end+1] = self.route[start:end+1]
     
-        used_cities = set(child_route[start:end+1])
+        used_nodes = set(child_route[start:end+1])
         left_fill = []
         right_fill = []
 
 
         for node in other.route:
-            if node not in used_cities:
+            if node not in used_nodes:
                 if len(left_fill) < start:
                     left_fill.append(node)
                 elif len(right_fill) < len(self.route) - end - 1:
                     right_fill.append(node)                
-                used_cities.add(node)
+                used_nodes.add(node)
     
         child_route[:start] = left_fill
         child_route[end+1:] = right_fill

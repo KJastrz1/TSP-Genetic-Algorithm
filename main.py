@@ -5,10 +5,10 @@ from genetic_algorithm import GeneticAlgorithm
 
 
 def generate_complete_graph(num_nodes, weight_range=(1, 100)):
-    G = nx.complete_graph(num_nodes)
-    for u, v in G.edges():
-        G.edges[u, v]["weight"] = random.randint(weight_range[0], weight_range[1])
-    return G
+    graph = nx.complete_graph(num_nodes)
+    for u, v in graph.edges():
+        graph.edges[u, v]["weight"] = random.randint(weight_range[0], weight_range[1])
+    return graph
 
 
 def plot_graph_step(graph, tour, current_node, pos):
@@ -58,3 +58,5 @@ if __name__ == "__main__":
         f"Best route starting from node {start_node}: {[start_node] + best_individual.route + [start_node]}"
     )
     print(f"Cost of the best route: {best_individual.cost}")
+    
+
