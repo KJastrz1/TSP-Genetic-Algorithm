@@ -1,29 +1,8 @@
-import random
-import networkx as nx
-import matplotlib.pyplot as plt
+from mpi4py import MPI
+import time
+
 from genetic_algorithm import GeneticAlgorithm
-
-
-def generate_complete_graph(num_nodes, weight_range=(1, 100)):
-    graph = nx.complete_graph(num_nodes)
-    for u, v in graph.edges():
-        graph.edges[u, v]["weight"] = random.randint(weight_range[0], weight_range[1])
-    return graph
-
-
-def plot_graph_step(graph, tour, current_node, pos):
-    plt.clf()
-    nx.draw(graph, pos, with_labels=True, node_color="lightblue", node_size=500)
-    path_edges = list(zip(tour, tour[1:]))
-    nx.draw_networkx_edges(graph, pos, edgelist=path_edges, edge_color="r", width=2)
-    nx.draw_networkx_nodes(
-        graph, pos, nodelist=[current_node], node_color="g", node_size=500
-    )
-
-    edge_labels = nx.get_edge_attributes(graph, "weight")
-    nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels)
-
-    plt.pause(0.5)
+from graph import load_graph_from_file
 
 
 def calculate_tour_cost(graph, tour):
@@ -34,29 +13,73 @@ def calculate_tour_cost(graph, tour):
 
 
 if __name__ == "__main__":
-    num_nodes = 10
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    num_nodes = 30
     start_node = 0
-    population_size = 100
+    population_size = 3000
     num_generations = 100
     mutation_rate = 0.01
     crossover_rate = 0.9
     tournament_size = 5
 
-    graph = generate_complete_graph(num_nodes)
-    genetic_algorithm = GeneticAlgorithm(
-        num_nodes,
-        start_node,
-        graph,
-        population_size,
-        mutation_rate,
-        crossover_rate,
-        num_generations,
-        tournament_size,
-    )
-    best_individual = genetic_algorithm.run()
-    print(
-        f"Best route starting from node {start_node}: {[start_node] + best_individual.route + [start_node]}"
-    )
-    print(f"Cost of the best route: {best_individual.cost}")
-    
+    graph = load_graph_from_file("graph.pkl")
 
+    if rank == 0:
+        start_time = time.time()
+
+        genetic_algorithm = GeneticAlgorithm(
+            num_nodes=num_nodes,
+            start_node=start_node,
+            graph=graph,
+            mutation_rate=mutation_rate,
+            crossover_rate=crossover_rate,
+            tournament_size=tournament_size,
+            num_generations=num_generations,
+            population_size=population_size,
+        )
+
+        pop_per_process = population_size // (size - 1)
+
+        for generation in range(num_generations):
+            for i in range(1, size):
+                comm.send(
+                    genetic_algorithm.population[
+                        (i - 1) * pop_per_process : i * pop_per_process
+                    ],
+                    dest=i,
+                    tag=11,
+                )
+
+            new_population = []
+            for i in range(1, size):
+                new_population.extend(comm.recv(source=i, tag=12))
+
+            genetic_algorithm.population = new_population
+            if generation % 5 == 0:
+                genetic_algorithm.selection_whole_population()
+
+        best_route = min(genetic_algorithm.population, key=lambda ind: ind.cost)
+        print(f"Best route Cost: {best_route.cost}")
+
+        end_time = time.time()
+        print(f"Total execution time: {end_time - start_time:.2f} seconds")
+
+    else:
+        for _ in range(num_generations):
+            population = comm.recv(source=0, tag=11)
+
+            local_genetic_algorithm = GeneticAlgorithm(
+                num_nodes=num_nodes,
+                start_node=start_node,
+                graph=graph,
+                mutation_rate=mutation_rate,
+                crossover_rate=crossover_rate,
+                tournament_size=tournament_size,
+                num_generations=num_generations,
+                population=population,
+            )
+            local_genetic_algorithm.evolve_population()
+            comm.send(local_genetic_algorithm.population, dest=0, tag=12)
