@@ -62,10 +62,17 @@ if __name__ == "__main__":
             requests.clear()
 
     local_best = min(genetic_algorithm.population, key=lambda ind: ind.cost)
-    local_best_data = (local_best.cost, local_best.route)
+    local_best_data = (local_best.cost, rank)
 
-    global_best_cost, global_best_route = comm.allreduce(local_best_data, op=MPI.MINLOC)
-
+    global_best_cost, global_best_rank = comm.allreduce(local_best_data, op=MPI.MINLOC)
+    
+    if rank == global_best_rank:       
+        global_best_route = local_best.route
+    else:
+        global_best_route = None
+ 
+    global_best_route = comm.bcast(global_best_route, root=global_best_rank)
+    
     if rank == 0:
         print(f"Best route Cost: {global_best_cost}")
         end_time = time.time()
