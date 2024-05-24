@@ -8,7 +8,7 @@ if __name__ == "__main__":
     start_time = time.time()
     num_nodes = 30
     start_node = 0
-    population_size = 4000
+    population_size = 2000
     num_generations = 100
     mutation_rate = 0.01
     crossover_rate = 0.9
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     )
 
     best_individual = genetic_algorithm.run()
-
+    print("Population size: ", population_size)
     print(f"Cost of the best route: {best_individual.cost}")
 
     end_time = time.time()

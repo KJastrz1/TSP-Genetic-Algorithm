@@ -10,7 +10,7 @@ if __name__ == "__main__":
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    total_population = 4000
+    total_population = 2000
     num_nodes = 30
     start_node = 0
     population_size = total_population // size
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     crossover_rate = 0.9
     tournament_size = 5
     migration_interval = 10
-    num_migrants = 50
+    num_migrants = int(0.05 * population_size)
 
     graph = load_graph_from_file("graph.pkl")
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
                     requests.append(req)
 
             new_individuals = []
-            for i in range(size - 1):
+            for i in range(size-1):
                 new_individuals.extend(comm.recv(source=MPI.ANY_SOURCE, tag=13))
 
             for migrant in new_individuals:
@@ -65,15 +65,16 @@ if __name__ == "__main__":
     local_best_data = (local_best.cost, rank)
 
     global_best_cost, global_best_rank = comm.allreduce(local_best_data, op=MPI.MINLOC)
-    
-    if rank == global_best_rank:       
+
+    if rank == global_best_rank:
         global_best_route = local_best.route
     else:
         global_best_route = None
- 
+
     global_best_route = comm.bcast(global_best_route, root=global_best_rank)
-    
+
     if rank == 0:
+        print("Total population size:", total_population)
         print(f"Best route Cost: {global_best_cost}")
         end_time = time.time()
         print(f"Total execution time: {end_time - start_time:.2f} seconds")
